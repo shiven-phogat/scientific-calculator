@@ -1,24 +1,37 @@
 ---
+# Playbook Name: Scientific Calculator Docker Deployment
+# This playbook pulls the latest calculator image from Docker Hub and runs it
+# as a container, exposing port 5000 on the host machine.
 - hosts: local
   connection: local
-  gather_facts: false
-  vars:
-    image: "{{ image | default('your_dockerhub_username/scientific-calculator:latest') }}"
-  tasks:
-    - name: Ensure community.docker is available (local prep)
-      ansible.builtin.debug:
-        msg: "Make sure you've installed community.docker collection: ansible-galaxy collection install community.docker"
+  gather_facts: false # Not necessary for local connection tasks
 
+  vars:
+    # IMPORTANT: Update 'your_dockerhub_username' with your actual Docker Hub username.
+    # The image variable can be overridden at the command line using:
+    # ansible-playbook -e "image=myuser/calc:v1.0" playbook.yml
+    image: "{{ image | default('swenforgets/scientific-calculator:latest') }}"
+    container_name: "scientific_calculator"
+    host_port: 5000 # The port to expose on the host machine
+    container_port: 5000 # The internal port the application listens on (Flask default)
+
+  tasks:
     - name: Pull image from Docker Hub
+      tags: pull_image
       community.docker.docker_image:
         name: "{{ image }}"
         source: pull
+        # The 'state: present' ensures the image exists locally.
+        state: present
 
-    - name: Run calculator container (expose port 5000)
+    - name: Run calculator container (expose port {{ host_port }})
+      tags: run_container
       community.docker.docker_container:
-        name: scientific_calculator
+        name: "{{ container_name }}"
         image: "{{ image }}"
-        state: started
-        restart_policy: unless-stopped
+        state: started # Ensures the container is running
+        restart_policy: unless-stopped # Automatically restart if it stops unexpectedly
         published_ports:
-          - "5000:5000"
+          # Format: [HOST_PORT]:[CONTAINER_PORT]
+          # This maps host_port (5000) to container_port (5000)
+          - "{{ host_port }}:{{ container_port }}"
