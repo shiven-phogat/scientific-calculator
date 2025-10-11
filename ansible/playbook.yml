@@ -1,37 +1,39 @@
 ---
 # Playbook Name: Scientific Calculator Docker Deployment
-# This playbook pulls the latest calculator image from Docker Hub and runs it
-# as a container, exposing port 5000 on the host machine.
+# FIX: Renamed the internal variable to 'docker_image' to resolve the recursive templating error.
 - hosts: local
   connection: local
-  gather_facts: false # Not necessary for local connection tasks
+  become: yes # Added 'become: yes' to ensure Docker commands can be executed
+  gather_facts: false
 
   vars:
-    # IMPORTANT: Update 'your_dockerhub_username' with your actual Docker Hub username.
-    # The image variable can be overridden at the command line using:
-    # ansible-playbook -e "image=myuser/calc:v1.0" playbook.yml
-    image: "{{ image | default('swenforgets/scientific-calculator:latest') }}"
+    # -----------------------------------------------------------------------------------
+    # FIX: We changed 'image' to 'docker_image' here. 
+    # This variable is now set to the value of the 'image' variable passed via 
+    # the command line (-e image=...) OR defaults to the hardcoded value if 'image' 
+    # is not provided.
+    # -----------------------------------------------------------------------------------
+    docker_image: "{{ image | default('swenforgets/scientific-calculator:latest') }}"
     container_name: "scientific_calculator"
-    host_port: 5000 # The port to expose on the host machine
-    container_port: 5000 # The internal port the application listens on (Flask default)
+    host_port: 5000
+    container_port: 5000
 
   tasks:
     - name: Pull image from Docker Hub
       tags: pull_image
       community.docker.docker_image:
-        name: "{{ image }}"
+        # Use the fixed internal variable name 'docker_image'
+        name: "{{ docker_image }}"
         source: pull
-        # The 'state: present' ensures the image exists locally.
         state: present
 
     - name: Run calculator container (expose port {{ host_port }})
       tags: run_container
       community.docker.docker_container:
         name: "{{ container_name }}"
-        image: "{{ image }}"
-        state: started # Ensures the container is running
-        restart_policy: unless-stopped # Automatically restart if it stops unexpectedly
+        # Use the fixed internal variable name 'docker_image'
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: unless-stopped
         published_ports:
-          # Format: [HOST_PORT]:[CONTAINER_PORT]
-          # This maps host_port (5000) to container_port (5000)
           - "{{ host_port }}:{{ container_port }}"
