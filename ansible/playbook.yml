@@ -19,6 +19,15 @@
     container_port: 5000
 
   tasks:
+    - name: Ensure Python dependencies for Docker are installed system-wide
+      # This task uses 'become: yes' (inherited from the play) to install dependencies 
+      # globally, solving the 'No module named requests' error.
+      ansible.builtin.pip:
+        name:
+          - docker
+          - requests
+        state: present
+
     - name: Pull image from Docker Hub
       tags: pull_image
       community.docker.docker_image:
