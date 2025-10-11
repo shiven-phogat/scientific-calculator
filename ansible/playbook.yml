@@ -1,0 +1,24 @@
+---
+- hosts: local
+  connection: local
+  gather_facts: false
+  vars:
+    image: "{{ image | default('your_dockerhub_username/scientific-calculator:latest') }}"
+  tasks:
+    - name: Ensure community.docker is available (local prep)
+      ansible.builtin.debug:
+        msg: "Make sure you've installed community.docker collection: ansible-galaxy collection install community.docker"
+
+    - name: Pull image from Docker Hub
+      community.docker.docker_image:
+        name: "{{ image }}"
+        source: pull
+
+    - name: Run calculator container (expose port 5000)
+      community.docker.docker_container:
+        name: scientific_calculator
+        image: "{{ image }}"
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "5000:5000"
