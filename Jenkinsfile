@@ -9,10 +9,9 @@ pipeline {
   }
 
   options {
-    // keep build logs for 30 days, and allow 5 concurrent builds
+    // keep build logs for 30 days, and allow 50 builds to be kept
     buildDiscarder(logRotator(daysToKeepStr: '30', numToKeepStr: '50'))
     timestamps()
-    ansiColor('xterm')
   }
 
   stages {
@@ -22,10 +21,28 @@ pipeline {
       }
     }
 
+    stage('Diagnostics') {
+      steps {
+        sh """
+          echo '===== Workspace root:'
+          pwd
+          echo '===== List root:'
+          ls -la
+          echo '===== Show Docker binary (if present):'
+          which docker || true
+          echo '===== Docker version:'
+          docker --version || true
+          echo '===== Docker info (may require permissions):'
+          docker info || true
+          echo '===== Disk free:'
+          df -h
+        """
+      }
+    }
+
     stage('Install Dependencies & Run Tests') {
       steps {
         script {
-          // create venv, install dependencies, run pytest with junit xml output
           sh """
             python3 -m venv ${VENV_DIR} || true
             . ${VENV_DIR}/bin/activate
@@ -38,7 +55,6 @@ pipeline {
       }
       post {
         always {
-          // Archive pytest XML (JUnit) so Jenkins can show test results
           junit allowEmptyResults: true, testResults: 'reports/results.xml'
           archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
         }
@@ -48,7 +64,6 @@ pipeline {
     stage('Build Docker Image') {
       steps {
         script {
-          // Build with a BUILD_NUMBER tag for traceability
           sh "docker build -t ${IMAGE_BASE}:${BUILD_NUMBER} ."
         }
       }
@@ -56,7 +71,6 @@ pipeline {
 
     stage('Docker Login & Push') {
       steps {
-        // login and push using stored Jenkins credentials
         withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
           sh '''
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
@@ -89,11 +103,8 @@ pipeline {
       echo "Pipeline failed. Check console output and test reports."
     }
     always {
-      // print a short summary and clean up local dangling images optionally
       sh '''
         echo "Build complete. IMAGE=${IMAGE_BASE}:${BUILD_NUMBER}"
-        # optional cleanup - uncomment if you want Jenkins agent to remove images after push
-        # docker rmi ${IMAGE_BASE}:${BUILD_NUMBER} || true
       '''
     }
   }
