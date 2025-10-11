@@ -3,7 +3,7 @@ pipeline {
   agent any
 
   environment {
-    IMAGE_BASE = "YOUR_DOCKERHUB_USERNAME/scientific-calculator"   // <--- change this
+    IMAGE_BASE = "swenforgets/scientific-calculator"   // <--- change this
     DOCKERHUB_CRED_ID = "dockerhub-creds"                         // <--- Jenkins credential id (username/password)
     VENV_DIR = "venv"
   }
