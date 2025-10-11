@@ -42,16 +42,24 @@ pipeline {
 
     stage('Install Dependencies & Run Tests') {
       steps {
-        script {
-          sh """
-            python3 -m venv ${VENV_DIR} || true
-            . ${VENV_DIR}/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-            mkdir -p reports
-            pytest -v --maxfail=1 --disable-warnings --junitxml=reports/results.xml
-          """
-        }
+        sh '''
+        set -eux
+
+        # remove previous venv to avoid permission problems
+        rm -rf venv || true
+
+        # create venv
+        python3 -m venv venv
+
+        # upgrade pip/setuptools/wheel using venv python
+        ./venv/bin/python -m pip install --upgrade pip setuptools wheel
+
+        # install requirements
+        ./venv/bin/pip install --no-cache-dir -r requirements.txt
+
+        # run pytest using venv python
+        ./venv/bin/pytest -v --maxfail=1 --disable-warnings --junitxml=reports/results.xml
+        '''
       }
       post {
         always {
@@ -60,6 +68,7 @@ pipeline {
         }
       }
     }
+
 
     stage('Build Docker Image') {
       steps {
