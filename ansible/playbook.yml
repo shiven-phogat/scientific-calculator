@@ -46,3 +46,4 @@
         restart_policy: unless-stopped
         published_ports:
           - "{{ host_port }}:{{ container_port }}"
+          
